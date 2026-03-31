@@ -1,3 +1,5 @@
+version: '3.8'
+
 configs:
   ella_config:
     content: |
@@ -23,6 +25,20 @@ configs:
       xdp:
         attach-mode: "generic"
 
+  prometheus_config:
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+      
+      scrape_configs:
+        - job_name: 'ella-core'
+          static_configs:
+            - targets: ['ella-core:5002']
+          metrics_path: '/api/v1/metrics'
+          scrape_interval: 10s
+          scrape_timeout: 5s
+
 services:
   ella-core:
     image: ghcr.io/ellanetworks/ella-core:v1.6.0
@@ -35,19 +51,26 @@ services:
     ports:
       - "5002:5002"
     networks:
-      default:
+      monitoring:
         driver_opts:
           com.docker.network.endpoint.ifname: eth0
       n3:
         driver_opts:
           com.docker.network.endpoint.ifname: n3
         ipv4_address: 10.3.0.2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/api/v1/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   ella-ueransim:
     image: ella-ueransim:latest
     build:
       context: ./ueransim
     container_name: ella-ueransim
-    command: ./nr-gnb -c /ueransim/config/gnbcfg.yaml   # 🔥 gNB auto-start
+    command: ./nr-gnb -c /ueransim/config/gnbcfg.yaml
     volumes:
       - ./config:/ueransim/config
     cap_add:
@@ -59,9 +82,55 @@ services:
         ipv4_address: 10.3.0.10
     depends_on:
       - ella-core
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    restart: unless-stopped
+    networks:
+      - monitoring
+    depends_on:
+      - ella-core
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
 networks:
+  monitoring:
+    driver: bridge
   n3:
+    driver: bridge
     internal: true
     ipam:
       config:
         - subnet: 10.3.0.0/24
+
+volumes:
+  prometheus_data:
+  grafana_data:
