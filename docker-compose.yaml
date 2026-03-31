@@ -1,0 +1,67 @@
+configs:
+  ella_config:
+    content: |
+      logging:
+        system:
+          level: "info"
+          output: "stdout"
+        audit:
+          output: "stdout"
+      db:
+        path: "core.db"
+      interfaces:
+        n2:
+          address: "10.3.0.2"
+          port: 38412
+        n3:
+          name: "n3"
+        n6:
+          name: "eth0"
+        api:
+          address: "0.0.0.0"
+          port: 5002
+      xdp:
+        attach-mode: "generic"
+
+services:
+  ella-core:
+    image: ghcr.io/ellanetworks/ella-core:v1.6.0
+    configs:
+      - source: ella_config
+        target: /core.yaml
+    restart: unless-stopped
+    entrypoint: /bin/core --config /core.yaml
+    privileged: true
+    ports:
+      - "5002:5002"
+    networks:
+      default:
+        driver_opts:
+          com.docker.network.endpoint.ifname: eth0
+      n3:
+        driver_opts:
+          com.docker.network.endpoint.ifname: n3
+        ipv4_address: 10.3.0.2
+  ella-ueransim:
+    image: ella-ueransim:latest
+    build:
+      context: ./ueransim
+    container_name: ella-ueransim
+    command: ./nr-gnb -c /ueransim/config/gnbcfg.yaml   # 🔥 gNB auto-start
+    volumes:
+      - ./config:/ueransim/config
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    networks:
+      n3:
+        ipv4_address: 10.3.0.10
+    depends_on:
+      - ella-core
+networks:
+  n3:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.3.0.0/24
