@@ -10,7 +10,7 @@ configs:
         audit:
           output: "stdout"
       db:
-        path: "core.db"
+        path: "/ella-data/core.db"
       interfaces:
         n2:
           address: "10.3.0.2"
@@ -42,9 +42,12 @@ configs:
 services:
   ella-core:
     image: ghcr.io/ellanetworks/ella-core:v1.6.0
+    volumes:
+      - ella_core_data:/ella-data
     configs:
       - source: ella_config
         target: /core.yaml
+        
     restart: unless-stopped
     entrypoint: /bin/core --config /core.yaml
     privileged: true
@@ -134,3 +137,4 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
+  ella_core_data:    # add this
