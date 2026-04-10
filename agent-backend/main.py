@@ -3,13 +3,17 @@ from pydantic import BaseModel
 import httpx
 import datetime
 from typing import List, Dict, Any
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 app = FastAPI(title="Ella-Core NEF Proxy", description="Agentic API for 5G QoS Orchestration")
 
 # Configuration
-ELLA_CORE_URL = "http://100.92.250.111:5002/api/v1"
+ELLA_CORE_URL = os.getenv("ELLA_CORE_URL", "http://127.0.0.1:5002/api/v1")
 # You must generate this via POST /api/v1/auth/login or the Ella UI
-ELLA_API_TOKEN = "ellacore_uxbHCojc3icP_tVZSnrZZXQVpMtHsb1ZdY0EZ" 
+ELLA_API_TOKEN = os.getenv("ELLA_CORE_TOKEN")  # Replace with your actual token
 
 headers = {
     "Authorization": f"Bearer {ELLA_API_TOKEN}",

@@ -1,4 +1,4 @@
-supi: 'imsi-001017889339201'
+supi: 'imsi-001013657756211'
 
 mcc: '001'
 mnc: '01'
@@ -7,9 +7,9 @@ protectionScheme: 0
 
 routingIndicator: '0000'
 
-key: '7ed131f6885b28c33f422fef8fd6c4eb'
+key: 'b88f01088ca45c301921f771a93f8688'
 
-op: 'b0c2c2ddd199465c9250df4768210ef2'
+op: 'a131974988e18bce1568853e84d99e3d'
 opType: 'OPC'
 
 amf: '8000'
