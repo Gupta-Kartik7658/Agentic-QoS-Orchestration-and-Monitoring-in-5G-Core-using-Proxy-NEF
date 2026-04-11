@@ -83,6 +83,7 @@ services:
     networks:
       n3:
         ipv4_address: 10.3.0.10
+      monitoring:
     depends_on:
       - ella-core
 
