@@ -56,7 +56,8 @@ class Phase4Tester:
     def set_ambr_policy(self, imsi, target_policy):
         """Change the QoS policy (which controls AMBR)"""
         try:
-            payload = {"target_policy": target_policy}
+            # Send as 'policy_name' to match the endpoint
+            payload = {"policy_name": target_policy}
             r = requests.put(f"{self.base_url}/core/subscriber/{imsi}/ambr", json=payload, timeout=5)
             r.raise_for_status()
             return r.json()

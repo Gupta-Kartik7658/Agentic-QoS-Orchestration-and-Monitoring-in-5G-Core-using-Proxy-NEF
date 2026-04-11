@@ -89,19 +89,35 @@ async def get_subscriber_policy(imsi: str):
         return {"imsi": imsi, "policy": resp.json().get("result", {})}
 
 @app.put("/core/subscriber/{imsi}/ambr")
-async def update_subscriber_ambr(imsi: str, target_policy: str = Body(..., embed=True)):
+async def update_subscriber_ambr(imsi: str, body: dict = Body(...)):
     """
-    Update QoS / AMBR. 
-    In Ella-Core, this is done by changing the assigned QoS Policy.
+    Update subscriber's QoS policy.
+    Expects: {"policy_name": "premium"} or {"target_policy": "premium"}
     """
-    payload = {"policyName": target_policy}
+    policy_name = body.get("policy_name") or body.get("target_policy")
+    
+    if not policy_name:
+        raise HTTPException(status_code=400, detail="Missing 'policy_name' or 'target_policy' in request body")
+    
+    # Verify policy exists first
+    async with httpx.AsyncClient() as client:
+        policy_check = await client.get(f"{ELLA_CORE_URL}/policies/{policy_name}", headers=headers)
+        if policy_check.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"Policy '{policy_name}' not found in Ella-Core")
+    
+    # Now update subscriber
+    payload = {"policyName": policy_name}
     
     async with httpx.AsyncClient() as client:
         resp = await client.put(f"{ELLA_CORE_URL}/subscribers/{imsi}", json=payload, headers=headers)
         if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            raise HTTPException(status_code=resp.status_code, detail=f"Ella-Core error: {resp.text}")
         
-        return {"message": f"Successfully updated IMSI {imsi} to policy '{target_policy}'"}
+        return {
+            "message": f"Successfully updated IMSI {imsi} to policy '{policy_name}'",
+            "imsi": imsi,
+            "policy": policy_name
+        }
 
 @app.put("/core/subscriber/{imsi}/slice")
 async def update_subscriber_slice(imsi: str, sst: int, sd: str = ""):
